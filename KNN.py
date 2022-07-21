@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial import distance
 from scipy.special import gamma, digamma
 import pandas as pd
+from numpy import genfromtxt
 plt.rcParams.update({'font.size': 20})
 
 
@@ -176,10 +177,16 @@ plot_test_KKN_estimator('KNN estimation test 40D', 40, 10000)
 """
 
 
+"""
+
 # Read the file
-df1 = pd.read_csv('apple8to10_21.csv', sep = ' ')
+df1 = pd.read_csv('apple8to10_21.csv', sep = ',')
 print(df1)
+
 print('-------------------------------------------------------------------------')
+df2 = df1.loc[:,'price']
+print(df2)
+
 # Calculate the GDP per-capita
 df2 = df1.loc[1:,'price']/df1.loc[:-1,'price']
 # df2.rename('GDPc') # -> to rename the label of the series "df2" : one-dimensional dataframe is called series
@@ -190,4 +197,4 @@ df3 = pd.concat([df1, df2], axis = 1)#, join='inner')
 # Add a name to the column GDP_pc
 df3.columns.values[3] = 'logreturns'
 
-print(df3)
+print(df3)"""
