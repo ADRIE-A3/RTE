@@ -5,6 +5,7 @@ from scipy.special import gamma, digamma
 import pandas as pd
 from numpy import genfromtxt
 from datetime import datetime
+from datetime import timedelta
 from datetime import date
 import calendar
 import re
@@ -127,7 +128,9 @@ def plot_test_KKN_estimator(filename, dim, N):
 
 def RTE(xn, yn,q , m=1 ,l=1 , k=50):
     xn1_xm_yl, xm_yl, xn1_xm, xm = make_vectors(xn, yn, m,l)
-    return Renyi_Estimator(k, len(xn1_xm[0]),q, xn1_xm ) - Renyi_Estimator(k, len(xm[0]),q, xm ) - Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) + Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
+    term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
+    term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) + Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
+    return term1-term2
 
 def ERTE(xn, yn,q , m=1 ,l=1 , k=50):
     rte = RTE(xn, yn, q, m, l, k)
@@ -137,7 +140,7 @@ def ERTE(xn, yn,q , m=1 ,l=1 , k=50):
 
 
 
-
+#makes the vectors needed for the renyi transfer entropy, given two time series and the memory m and l
 def make_vectors(xn, yn, m, l):
     N = len(xn)
     assert N == len(yn), 'both timeseries should have same length'
@@ -157,25 +160,51 @@ def make_vectors(xn, yn, m, l):
 
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
+
+#filter data from al datetime points to only tradingdays and tradinghours of september 2021  , i.e. only weekdays between 15:30 and 22:04
+#round data to minute resolution
+#return dictionary with keys = daytime objects and values the filterd stock price
+def cleandata(df):
+    opening = '2021-9-1 15:30:00.000000'
+    open_dt = datetime.strptime(opening, '%Y-%m-%d %H:%M:%S.%f')
+    closing = '2021-9-30 22:05:00.000000'
+    closing_dt = datetime.strptime(closing, '%Y-%m-%d %H:%M:%S.%f')
+    tot_ts = df.iloc[:, 3:].values.tolist()
+    ts_dict = {datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').replace(second=0,microsecond=0):[x[1]] for x in tot_ts if datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').weekday() < 5 and open_dt.date() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date() <= closing_dt.date() and open_dt.time() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').time() <= closing_dt.time() }
+    return ts_dict
+
+#merge the data of time series dictionaries
+#if a key of dict1 is not in dict2 the value of the stock price one minute earlier will be added
+def merge_dicts(dict1, dict2):
+    for k in dict1.keys():
+        if k in dict2:
+            dict1[k].append(dict2[k][0])
+        else:
+            dict1[k].append(dict2[k - timedelta(minutes=1)][0])
+
+def ts_to_logreturn(ts):
+    return np.log(ts[1:]/ts[:-1])
+
+
 """
-m = 2
-q = np.array(0.8)
-eta = 1
-
-a = np.random.standard_cauchy((5000, m))
-b = np.random.normal(0, 1, size = (5000,m))
-c  = np.random.standard_t( eta, size=(5000, m))
-d = np.random.uniform(0,5000, size=(5000, m))
+df_apple = pd.read_csv(f'apple8to10_21.csv', sep = ',')
+df_apple= df_apple.iloc[::-1]
+df_sp = pd.read_csv(f'S&P8to10_21.csv', sep = ',')
+df_sp= df_sp.iloc[::-1]
+apple_dict = cleandata(df_apple)
+sp_dict = cleandata(df_sp)
 
 
-print(RE_mean_std(m,q,d))
-print(m * np.log2(5000))
+merge_dicts(sp_dict, apple_dict)
+sp_arr = np.array(list(sp_dict.values()))[:,0]
+apple_arr = np.array(list(sp_dict.values()))[:,1]
+sp_arr = np.array(list(sp_dict.values()))[:,0]
+
+
+apple_arr = ts_to_logreturn(apple_arr)
+sp_arr = ts_to_logreturn(sp_arr)
+
+
+print(RTE(sp_arr, apple_arr, 1.4 , m=4 ,l=1 , k=50))
+print(RTE(apple_arr,sp_arr,  1.4, m=4 ,l=1 , k=50))
 """
-
-
-plot_test_KKN_estimator('KNN estimation test 1D', 1, 10000)
-plot_test_KKN_estimator('KNN estimation test 2D', 2, 10000)
-plot_test_KKN_estimator('KNN estimation test 20D', 20, 10000)
-plot_test_KKN_estimator('KNN estimation test 40D', 40, 10000)
-
-
