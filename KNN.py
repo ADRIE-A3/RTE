@@ -13,29 +13,35 @@ plt.rcParams.update({'font.size': 20})
 
 
 
-
+# analytical value for normal distribution at given q, dimension and correlation matrix determinant (default = 1)
 def RE_normal(q, dim, det_sigm=1):
     return 0.5 *  np.log2( (2 * np.pi)**(dim) *det_sigm ) - (dim * np.log2(q))/ (2*(1-q))
 
+
+# analytical value for normal distribution at given q
 def RE_cauchy(q):
     assert (q>0.5).all(), 'q needs to be bigger then 0.5'
     return np.log2( gamma(q-0.5) / (gamma(q) * (np.pi ** (q-0.5)))) / (1-q)
 
+
+# analytical value for normal distribution at given q, dimension, eta (dof of the distribution), correlation matrix determinant (default = 1)
 def RE_studentt(q, dim, eta, det_sigma = 1):
     assert (q * 0.5 * (eta+dim) - 0.5* dim > 0).all(), 'eta/dimension-condition for validity analytical result RE not met'
     return (1 / (1-q)) * ( np.log2(gamma( 0.5 * (eta + dim))**(q) * gamma(q * 0.5 * (eta + dim) - dim * 0.5) * (det_sigma) ** (0.5*(1-q)) * (eta*np.pi)**(0.5 * dim * (1-q))) - np.log2(gamma( 0.5 * eta)**(q) * gamma(q * 0.5 * (eta + dim))))
 
-
+#not used
 def coordinates(x, m):
     D = [x[i:i + m] for i in range(len(x) - m + 1)]
     return distance.cdist(D, D, 'euclidean')
 
-
+#given a vector in phasespace and the distance matrix between all the points in phase space,
+# this function returns the k-th neirest neighbour of the given vector
 def k_nD(i, k, M):
     D = M[i].tolist()
     D.sort()
     return D[k]
 
+#this estimator returns the RE for given k, m (dimension), q and D (vectorlist), using the Leonenko estimator
 
 def Renyi_Estimator(k, m, q, D):
     V = np.pi ** (m / 2) / (gamma(m / 2 + 1))
@@ -59,7 +65,7 @@ def Renyi_Estimator(k, m, q, D):
         return H
 
 
-
+#this function calculates the mean value and std of the RE estimated with the Leonenko estimator for different values of k
 def RE_mean_std( m,q, D,nmin = 40, nmax = 50):
     res = np.array([Renyi_Estimator(l,m,q, D) for l in range(nmin, nmax + 1)])
     re_mean = np.sum(res)/(nmax-nmin+1)
@@ -67,7 +73,7 @@ def RE_mean_std( m,q, D,nmin = 40, nmax = 50):
     return (re_mean, re_std)
 
 
-
+#plots the results of the Leonenko estimator and compares it to the analytical solutions
 def plot_test_KKN_estimator(filename, dim, N):
 
     #normal distr check
@@ -125,13 +131,16 @@ def plot_test_KKN_estimator(filename, dim, N):
     plt.savefig(filename)
 
 
-
+#this function calculates the RTE as a sum of 4 terms of RE of joint distributions
 def RTE(xn, yn,q , m=1 ,l=1 , k=50):
     xn1_xm_yl, xm_yl, xn1_xm, xm = make_vectors(xn, yn, m,l)
     term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
     term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) + Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
     return term1-term2
 
+# this fucntion calculates the ERTE by subtracting the RTE with the RTE_shuffeled ,
+# where the in the RTE_shuffeled the source series is shuffeld
+#this takes into account the finite size effects
 def ERTE(xn, yn,q , m=1 ,l=1 , k=50):
     rte = RTE(xn, yn, q, m, l, k)
     np.random.shuffle(yn)
@@ -186,7 +195,7 @@ def ts_to_logreturn(ts):
     return np.log(ts[1:]/ts[:-1])
 
 
-"""
+
 df_apple = pd.read_csv(f'apple8to10_21.csv', sep = ',')
 df_apple= df_apple.iloc[::-1]
 df_sp = pd.read_csv(f'S&P8to10_21.csv', sep = ',')
@@ -198,7 +207,7 @@ sp_dict = cleandata(df_sp)
 merge_dicts(sp_dict, apple_dict)
 sp_arr = np.array(list(sp_dict.values()))[:,0]
 apple_arr = np.array(list(sp_dict.values()))[:,1]
-sp_arr = np.array(list(sp_dict.values()))[:,0]
+
 
 
 apple_arr = ts_to_logreturn(apple_arr)
@@ -207,4 +216,3 @@ sp_arr = ts_to_logreturn(sp_arr)
 
 print(RTE(sp_arr, apple_arr, 1.4 , m=4 ,l=1 , k=50))
 print(RTE(apple_arr,sp_arr,  1.4, m=4 ,l=1 , k=50))
-"""
