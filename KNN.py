@@ -6,6 +6,8 @@ import pandas as pd
 from numpy import genfromtxt
 from datetime import datetime
 from datetime import timedelta
+import sklearn
+from sklearn import preprocessing
 from datetime import date
 import calendar
 import re
@@ -51,11 +53,13 @@ def Renyi_Estimator(k, m, q, D):
     I = []
     if q !=1:
         C = (gamma(k) / (gamma(k + 1 - q))) ** (1 / (1 - q))
+
         for i in range(N):
+
             G = (N - 1) * C * V * (k_nD(i, k, Distance_matrix)) ** (m)
             I.append(G ** (1 - q))
         H = np.log2(np.sum(I) / N) / (1 - q)
-        T = m / 2 * np.log2(2 * np.pi) - m / (2 * (1 - q)) * np.log2(q)
+        #T = m / 2 * np.log2(2 * np.pi) - m / (2 * (1 - q)) * np.log2(q)
         return H
     else:
         for i in range(N):
@@ -135,7 +139,8 @@ def plot_test_KKN_estimator(filename, dim, N):
 def RTE(xn, yn,q , m=1 ,l=1 , k=50):
     xn1_xm_yl, xm_yl, xn1_xm, xm = make_vectors(xn, yn, m,l)
     term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
-    term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) + Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
+    term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) - Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
+    print(term1, term2)
     return term1-term2
 
 # this fucntion calculates the ERTE by subtracting the RTE with the RTE_shuffeled ,
@@ -145,6 +150,7 @@ def ERTE(xn, yn,q , m=1 ,l=1 , k=50):
     rte = RTE(xn, yn, q, m, l, k)
     np.random.shuffle(yn)
     rte_shuff = RTE(xn, yn, q, m, l, k)
+    print(rte, rte_shuff)
     return rte-rte_shuff
 
 
@@ -167,6 +173,7 @@ def make_vectors(xn, yn, m, l):
     xn1_xm_yl = list(zip(*xnms))
     xm_yl = list(zip(*xnms[1:]))
 
+
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
 
@@ -178,8 +185,10 @@ def cleandata(df):
     open_dt = datetime.strptime(opening, '%Y-%m-%d %H:%M:%S.%f')
     closing = '2021-9-30 22:05:00.000000'
     closing_dt = datetime.strptime(closing, '%Y-%m-%d %H:%M:%S.%f')
+    special_closing_day = '2021-9-6'
+    special_closing_day_dt = datetime.strptime(special_closing_day, '%Y-%m-%d')
     tot_ts = df.iloc[:, 3:].values.tolist()
-    ts_dict = {datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').replace(second=0,microsecond=0):[x[1]] for x in tot_ts if datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').weekday() < 5 and open_dt.date() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date() <= closing_dt.date() and open_dt.time() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').time() <= closing_dt.time() }
+    ts_dict = {datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').replace(second=0,microsecond=0):[x[1]] for x in tot_ts if datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').weekday() < 5 and open_dt.date() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date() <= closing_dt.date() and datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date()!= special_closing_day_dt.date() and open_dt.time() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').time() <= closing_dt.time()  }
     return ts_dict
 
 #merge the data of time series dictionaries
@@ -213,6 +222,10 @@ apple_arr = np.array(list(sp_dict.values()))[:,1]
 apple_arr = ts_to_logreturn(apple_arr)
 sp_arr = ts_to_logreturn(sp_arr)
 
+"""normalized_apple = preprocessing.normalize(apple_arr)
+normalized_sp = preprocessing.normalize(sp_arr)"""
 
-print(RTE(sp_arr, apple_arr, 1.4 , m=4 ,l=1 , k=50))
-print(RTE(apple_arr,sp_arr,  1.4, m=4 ,l=1 , k=50))
+
+print(RTE(sp_arr, apple_arr, 1.4, m=25, l=1, k=50))
+print(ERTE(sp_arr, apple_arr, 1.4, m=25, l=1, k=50))
+
