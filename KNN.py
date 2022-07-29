@@ -6,12 +6,14 @@ import pandas as pd
 from numpy import genfromtxt
 from datetime import datetime
 from datetime import timedelta
+from statsmodels.tsa.stattools import adfuller
+import csv
 import sklearn
 from sklearn import preprocessing
 from datetime import date
 import calendar
 import re
-plt.rcParams.update({'font.size': 20})
+plt.rcParams.update({'font.size': 8})
 
 
 
@@ -140,18 +142,21 @@ def RTE(xn, yn,q , m=1 ,l=1 , k=50):
     xn1_xm_yl, xm_yl, xn1_xm, xm = make_vectors(xn, yn, m,l)
     term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
     term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) - Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
-    print(term1, term2)
+    #print(term1, term2)
     return term1-term2
 
 # this fucntion calculates the ERTE by subtracting the RTE with the RTE_shuffeled ,
 # where the in the RTE_shuffeled the source series is shuffeld
 #this takes into account the finite size effects
-def ERTE(xn, yn,q , m=1 ,l=1 , k=50):
+def ERTE(xn, yn,q , m=1 ,l=1 , k=50, N=1):
     rte = RTE(xn, yn, q, m, l, k)
-    np.random.shuffle(yn)
-    rte_shuff = RTE(xn, yn, q, m, l, k)
-    print(rte, rte_shuff)
-    return rte-rte_shuff
+    ERTE_list = np.zeros(N)
+    for i in range(N):
+        yn_shuff = np.random.permutation(yn)
+        rte_shuff = RTE(xn, yn_shuff, q, m, l, k)
+        ERTE_list[i] = rte-rte_shuff
+
+    return (np.mean(ERTE_list), np.std(ERTE_list))
 
 
 
@@ -203,29 +208,60 @@ def merge_dicts(dict1, dict2):
 def ts_to_logreturn(ts):
     return np.log(ts[1:]/ts[:-1])
 
+def test_ts(ts):
+    print(f'adf test:')
+    print(adfuller(ts))
+
+#read files, make dataframes, clean the data of both files (with 'cleandata(df)' ) merge timepoints with target serie as reference,
+# map to logreturnsvalues and return timeseries of target serie and scource serie
+def readfiles_and_proces_to_logreturns_ts(filename_tg, filename_sc):
+    df_sc = pd.read_csv(filename_sc, sep = ',')
+    df_sc = df_sc.iloc[::-1]
+    df_tg = pd.read_csv(filename_tg, sep=',')
+    df_tg = df_tg.iloc[::-1]
+    dict_sc = cleandata(df_sc)
+    dict_tg = cleandata(df_tg)
+    merge_dicts(dict_tg, dict_sc)
+    ts_tg = np.array(list(dict_tg.values()))[:,0]
+    ts_sc = np.array(list(dict_tg.values()))[:, 1]
+    ts_tg = ts_to_logreturn(ts_tg)
+    ts_sc = ts_to_logreturn(ts_sc)
+    return (ts_tg, ts_sc)
 
 
-df_apple = pd.read_csv(f'apple8to10_21.csv', sep = ',')
-df_apple= df_apple.iloc[::-1]
-df_sp = pd.read_csv(f'S&P8to10_21.csv', sep = ',')
-df_sp= df_sp.iloc[::-1]
-apple_dict = cleandata(df_apple)
-sp_dict = cleandata(df_sp)
-
-
-merge_dicts(sp_dict, apple_dict)
-sp_arr = np.array(list(sp_dict.values()))[:,0]
-apple_arr = np.array(list(sp_dict.values()))[:,1]
 
 
 
-apple_arr = ts_to_logreturn(apple_arr)
-sp_arr = ts_to_logreturn(sp_arr)
+def writetofile_ERTE_m_depence(file,ts_t, ts_s,q, m_values, k=50):
+    with open(f'./data/apple_sp/ERTE_m_q={q}.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['m', 'mean ERTE', 'std ERTE'])
+        for m in m_values:
+            avg, std =  ERTE(ts_t, ts_s, q, m, l=1, k=k)
+            writer.writerow([m, avg, std])
 
-"""normalized_apple = preprocessing.normalize(apple_arr)
-normalized_sp = preprocessing.normalize(sp_arr)"""
+def plot_ERTE_m_depence(file, figname):
+    Lines = []
+    with open(file, 'r') as f:
+        cr = csv.reader(f)
+        for line in cr:
+            Lines.append(line)
+    lines = np.array(Lines)
+    m_arr = lines[1:, 0].astype(float)
+    ERTE_a = lines[1:, 1].astype(float)
+    ERTE_std = lines[1:, 2].astype(float)
+    plt.figure(figsize=((12, 7)))
+
+    plt.errorbar( m_arr, ERTE_a, ERTE_std, fmt='o')
+    plt.savefig(f'./figures/{figname}.png')
 
 
-print(RTE(sp_arr, apple_arr, 1.4, m=25, l=1, k=50))
-print(ERTE(sp_arr, apple_arr, 1.4, m=25, l=1, k=50))
 
+#sp, ap = readfiles_and_proces_to_logreturns_ts('S&P8to10_21.csv','apple8to10_21.csv')
+
+
+
+m_range = [1,5,10,15,20,25,30,35,40,45,50, 55,60,65]
+for q in [0.8, 1,1.4,1.8]:
+    #writetofile_ERTE_m_depence(f'./data/apple_sp/ERTE_m_q={q}.csv', sp, ap, q,m_range  )
+    plot_ERTE_m_depence(f'./data/apple_sp/ERTE_m_q={q}.csv', f'test_m_dependence_q={q}')
