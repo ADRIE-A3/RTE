@@ -139,7 +139,7 @@ def plot_test_KKN_estimator(filename, dim, N):
 
 #this function calculates the RTE as a sum of 4 terms of RE of joint distributions
 def RTE(xn, yn,q , m=1 ,l=1 , k=50):
-    xn1_xm_yl, xm_yl, xn1_xm, xm = make_vectors(xn, yn, m,l)
+    xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(xn, yn, m,l)
     term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
     term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) - Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
     #print(term1, term2)
@@ -161,7 +161,7 @@ def ERTE(xn, yn,q , m=1 ,l=1 , k=50, N=1):
 
 
 #makes the vectors needed for the renyi transfer entropy, given two time series and the memory m and l
-def make_vectors(xn, yn, m, l):
+def make_selfconditional_vectors(xn, yn, m, l):
     N = len(xn)
     assert N == len(yn), 'both timeseries should have same length'
     ml = max(m,l)
@@ -181,54 +181,47 @@ def make_vectors(xn, yn, m, l):
 
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
+def make_externalconditional_vectors(xn, sn, zn, tn, un, yn, m, l ):
+    N = len(xn)
+    assert N == len(yn) == len(sn)== len(zn)== len(tn)== len(un), 'all timeseries should have same length'
+    ml = max(m,l)
+    xnms = []
+    for i in range(m):
+        xnms.append(sn[ml-1 - i:N-1 - i])
+        xnms.append(zn[ml-1 - i:N-1 - i])
+        xnms.append(tn[ml-1 - i:N -1 - i])
+        xnms.append(un[ml -1 - i:N-1 - i])
 
-#filter data from al datetime points to only tradingdays and tradinghours of september 2021  , i.e. only weekdays between 15:30 and 22:04
-#round data to minute resolution
-#return dictionary with keys = daytime objects and values the filterd stock price
-def cleandata(df):
-    opening = '2021-9-1 15:30:00.000000'
-    open_dt = datetime.strptime(opening, '%Y-%m-%d %H:%M:%S.%f')
-    closing = '2021-9-30 22:05:00.000000'
-    closing_dt = datetime.strptime(closing, '%Y-%m-%d %H:%M:%S.%f')
-    special_closing_day = '2021-9-6'
-    special_closing_day_dt = datetime.strptime(special_closing_day, '%Y-%m-%d')
-    tot_ts = df.iloc[:, 3:].values.tolist()
-    ts_dict = {datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').replace(second=0,microsecond=0):[x[1]] for x in tot_ts if datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').weekday() < 5 and open_dt.date() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date() <= closing_dt.date() and datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').date()!= special_closing_day_dt.date() and open_dt.time() <= datetime.strptime(x[0], '%Y-%m-%d %H:%M:%S.%f').time() <= closing_dt.time()  }
-    return ts_dict
+    xm = list(zip(*xnms))
 
-#merge the data of time series dictionaries
-#if a key of dict1 is not in dict2 the value of the stock price one minute earlier will be added
-def merge_dicts(dict1, dict2):
-    for k in dict1.keys():
-        if k in dict2:
-            dict1[k].append(dict2[k][0])
-        else:
-            dict1[k].append(dict2[k - timedelta(minutes=1)][0])
+    for i in range(1):
+        xnms.append(xn[ml - i:N - i])
 
-def ts_to_logreturn(ts):
-    return np.log(ts[1:]/ts[:-1])
+    xn1_xm = list(zip(*xnms))
+
+    xnynms = []
+    for i in range(m):
+        xnynms.append(sn[ml-1 - i:N-1 - i])
+        xnynms.append(zn[ml-1 - i:N-1 - i])
+        xnynms.append(tn[ml-1 - i:N -1 - i])
+        xnynms.append(un[ml -1 - i:N-1 - i])
+    for i in range(l):
+        xnynms.append(yn[ml - 1 - i:N - 1 - i])
+
+    xm_yl = list(zip(*xnynms))
+
+    for i in range(1):
+        xnynms.append(xn[ml - i:N - i])
+
+    xn1_xm_yl= list(zip(*xnynms))
+
+
+    return (xn1_xm_yl, xm_yl, xn1_xm, xm)
+
 
 def test_ts(ts):
     print(f'adf test:')
     print(adfuller(ts))
-
-#read files, make dataframes, clean the data of both files (with 'cleandata(df)' ) merge timepoints with target serie as reference,
-# map to logreturnsvalues and return timeseries of target serie and scource serie
-def readfiles_and_proces_to_logreturns_ts(filename_tg, filename_sc):
-    df_sc = pd.read_csv(filename_sc, sep = ',')
-    df_sc = df_sc.iloc[::-1]
-    df_tg = pd.read_csv(filename_tg, sep=',')
-    df_tg = df_tg.iloc[::-1]
-    dict_sc = cleandata(df_sc)
-    dict_tg = cleandata(df_tg)
-    merge_dicts(dict_tg, dict_sc)
-    ts_tg = np.array(list(dict_tg.values()))[:,0]
-    ts_sc = np.array(list(dict_tg.values()))[:, 1]
-    ts_tg = ts_to_logreturn(ts_tg)
-    ts_sc = ts_to_logreturn(ts_sc)
-    return (ts_tg, ts_sc)
-
-
 
 
 
@@ -255,13 +248,45 @@ def plot_ERTE_m_depence(file, figname):
     plt.errorbar( m_arr, ERTE_a, ERTE_std, fmt='o')
     plt.savefig(f'./figures/{figname}.png')
 
+#returns two lists: 1) stringnames of the stocks 2) according timeseries
+def get_timeseries(filename):
+    data = pd.read_csv(f'./clean_timeseries/{filename}.csv')
+    timeseries = []
+    for ts in list(data.columns)[1:]:
+        timeseries.append(np.array(data[ts].tolist()))
+    return (list(data.columns[1:]), timeseries)
 
 
-#sp, ap = readfiles_and_proces_to_logreturns_ts('S&P8to10_21.csv','apple8to10_21.csv')
+
+stocks_z, timeseries_z = get_timeseries('zlata_timeseries')
+stocks_n, timeseries_n = get_timeseries('narayan_timeseries')
+ln_stocks_z, ln_timeseries_z = get_timeseries('logreturn_zlata_timeseries')
+ln_stocks_n, ln_timeseries_n = get_timeseries('logreturn_narayan_timeseries')
+
+
+for i,ts in enumerate(ln_timeseries_z):
+    print(ln_stocks_z[i])
+    test_ts(ts)
+    print('------------------------------------')
+
+SP5 = (4.949733721649842*7.109109)*timeseries_n[0]+(4.949733721649842*5.926995)*timeseries_n[3]+(4.949733721649842*3.121333)*timeseries_n[1]+(4.949733721649842*2.005476)*timeseries_n[2]+(4.949733721649842*2.040194)*timeseries_n[4]
+
+
+"""
+print(len(timeseries_n[0]), len(timeseries_z[1]))
+plt.figure(figsize=((12, 7)))
+plt.plot(range(len(timeseries_n[0])), timeseries_n[0],  color = 'red', label = stocks_n[0])
+plt.plot(range(len(timeseries_z[1])), timeseries_z[1],color  = 'blue' ,label = stocks_z[1])
+plt.legend()
+plt.title('comparisson apple data narayan and zlata')
+plt.savefig(f'./figures/apple_comparison.png')
+"""
 
 
 
+"""
 m_range = [1,5,10,15,20,25,30,35,40,45,50, 55,60,65]
 for q in [0.8, 1,1.4,1.8]:
     #writetofile_ERTE_m_depence(f'./data/apple_sp/ERTE_m_q={q}.csv', sp, ap, q,m_range  )
-    plot_ERTE_m_depence(f'./data/apple_sp/ERTE_m_q={q}.csv', f'test_m_dependence_q={q}')
+    plot_ERTE_m_depence(f'./data/apple_sp/ERTE_m_q={q}.csv', f'test_m_dependence_q={q}')"""
+
