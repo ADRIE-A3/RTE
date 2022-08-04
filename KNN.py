@@ -269,7 +269,7 @@ def get_RTEs_shuffeld(filename):
     return RTEs_shuffeld
 
 
-def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
+def write_RTE(filename,xn, yn ,m, l, q_range ,N=10, shuffel = False ):
 
     if shuffel:
         total_filename= f'./data/shuffeld_{filename}_m{m}_l{l}_N{N}_.csv'
