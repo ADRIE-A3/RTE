@@ -270,12 +270,17 @@ def get_RTEs_shuffeld(filename):
 
 
 def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
-    with open(f'./data/{filename}_m{m}_l{l}_N{N}_.csv', 'w', newline='') as f:
 
+    if shuffel:
+        total_filename= f'./data/shuffeld_{filename}_m{m}_l{l}_N{N}_.csv'
+    else:
+        total_filename = f'./data/{filename}_m{m}_l{l}_N{N}_.csv'
+
+    with open(total_filename, 'w', newline='') as f:
         writer = csv.writer(f)
         headers = [f'q={q}' for q in q_range]
         writer.writerow(headers)
-        for k in range(5,51):
+        for k in [5,15,25,35,45]:
             for i in range(N):
                 row = []
                 for q in q_range:
@@ -305,7 +310,7 @@ ln_SP5 = ln_timeseries_n[5]
 for i,ts in enumerate(ln_timeseries_n[:-1]):
     print(ln_stocks_n[i])
     start = time.process_time()
-    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5_juist', ln_SP5, ts , m=5, l=5, q_range=[0.8, 1, 1.4], N=1, shuffel= False)
+    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=1, l=1, q_range=[0.8, 1, 1.4], N=10, shuffel= False)
     print(time.process_time() - start)
 
 
@@ -331,10 +336,10 @@ for stock in ln_stocks_n[:-1]:
     print('------------------------------------------------------------------------------------------------------')
 
 
+"""
 
 
-
-stock = ln_stocks_n[0]
+"""stock = ln_stocks_n[0]
 
 data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_juist_m1_l1_N1_.csv')
 data_shuff = pd.read_csv(f'./data/RTE_shuff_{stock}_SP5_historySP5_m1_l1_N1_.csv')
@@ -353,7 +358,7 @@ for rte_q in list(data.columns):
     std = np.std(rtes) + np.std(rtes_shuff)
     print('juist', mean, std)
 print('------------------------------------------------------------------------------------------------------')
-
+"""
 
 
 SP500 = timeseries_z[0]
@@ -374,7 +379,7 @@ plt.savefig(f'./figures/SP5_SP500_apple_comparison.png')
 
 
 
-print(len(ln_timeseries_n[0]), len(ln_timeseries_z[1]))
+"""print(len(ln_timeseries_n[0]), len(ln_timeseries_z[1]))
 plt.figure(figsize=((12, 7)))
 plt.plot(range(len(ln_timeseries_n[0])), ln_timeseries_n[0],  color = 'red', label = stocks_n[0])
 plt.plot(range(len(ln_timeseries_z[1])), ln_timeseries_z[1],color  = 'blue' ,label = stocks_z[1])
@@ -383,8 +388,6 @@ plt.title('comparisson logreturn apple data narayan and zlata')
 plt.savefig(f'./figures/logreturn_apple_comparison.png')
 
 """
-
-
 
 """
 m_range = [1,5,10,15,20,25,30,35,40,45,50, 55,60,65]

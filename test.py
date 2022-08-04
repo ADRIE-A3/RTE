@@ -62,6 +62,27 @@ def make_externalconditional_vectors(xn, sn, zn, tn, un, yn, m, l ):
 
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
+
+def make_selfconditional_vectors(xn, yn, m, l):
+    N = len(xn)
+    assert N == len(yn), 'both timeseries should have same length'
+    ml = max(m,l)
+    xnms = []
+    for i in range(m + 1):
+        xnms.append(xn[ml - i:N - i])
+
+    xn1_xm = list(zip(*xnms))
+    xm = list(zip(*xnms[1:]))
+
+    for i in range(l):
+        xnms.append(yn[ml - 1 - i:N - 1 - i])
+
+    xn1_xm_yl = list(zip(*xnms))
+    xm_yl = list(zip(*xnms[1:]))
+
+
+    return (xn1_xm_yl, xm_yl, xn1_xm, xm)
+
 """xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(xn, an, bn, cn, dn, yn , m = 5, l=5)
 print(xm)
 print(len(xm[0]))
@@ -73,10 +94,12 @@ print(xn1_xm_yl)
 print(len(xn1_xm_yl[0]))"""
 
 
-
-# Driver code
-dict_1 = {'John': 15, 'Rick': 10, 'Misa': 12}
-dict_2 = {'Bonnie': 18, 'Rick': 20, 'Matt': 16}
-dict_1.update(dict_2)
-print('Updated dictionary:')
-print(dict_1)
+xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(xn, yn , m = 2, l=1)
+print(xm)
+print(len(xm[0]))
+print(xn1_xm)
+print(len(xn1_xm[0]))
+print(xm_yl)
+print(len(xm_yl[0]))
+print(xn1_xm_yl)
+print(len(xn1_xm_yl[0]))
