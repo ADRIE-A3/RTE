@@ -271,7 +271,7 @@ def get_RTEs_shuffeld(filename):
 
 def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
     with open(f'./data/{filename}_m{m}_l{l}_N{N}_.csv', 'w', newline='') as f:
-        yn_shuff = np.random.permutation(yn)
+
         writer = csv.writer(f)
         headers = [f'q={q}' for q in q_range]
         writer.writerow(headers)
@@ -280,6 +280,7 @@ def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
                 row = []
                 for q in q_range:
                     if shuffel:
+                        yn_shuff = np.random.permutation(yn)
                         row.append(RTE(xn, yn_shuff, q, m, l, k))
                     else:
                         row.append(RTE(xn, yn, q, m, l, k))
@@ -304,7 +305,7 @@ ln_SP5 = ln_timeseries_n[5]
 for i,ts in enumerate(ln_timeseries_n[:-1]):
     print(ln_stocks_n[i])
     start = time.process_time()
-    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5_juist', ln_SP5, ts , m=1, l=1, q_range=[0.8, 1, 1.4], N=1)
+    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5_juist', ln_SP5, ts , m=5, l=5, q_range=[0.8, 1, 1.4], N=1, shuffel= False)
     print(time.process_time() - start)
 
 
