@@ -13,7 +13,8 @@ from sklearn import preprocessing
 from datetime import date
 import calendar
 import re
-plt.rcParams.update({'font.size': 8})
+import time
+plt.rcParams.update({'font.size': 20})
 
 
 
@@ -160,6 +161,37 @@ def ERTE(xn, yn,q , m=1 ,l=1 , k=50, N=1):
 
 
 
+def test_ts(ts):
+    print(f'adf test:')
+    print(adfuller(ts))
+
+
+
+def writetofile_ERTE_m_depence(file,ts_t, ts_s,q, m_values, k=50):
+    with open(f'./data/apple_sp/ERTE_m_q={q}.csv', 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['m', 'mean ERTE', 'std ERTE'])
+        for m in m_values:
+            avg, std =  ERTE(ts_t, ts_s, q, m, l=1, k=k)
+            writer.writerow([m, avg, std])
+
+
+def plot_ERTE_m_depence(file, figname):
+    Lines = []
+    with open(file, 'r') as f:
+        cr = csv.reader(f)
+        for line in cr:
+            Lines.append(line)
+    lines = np.array(Lines)
+    m_arr = lines[1:, 0].astype(float)
+    ERTE_a = lines[1:, 1].astype(float)
+    ERTE_std = lines[1:, 2].astype(float)
+    plt.figure(figsize=((12, 7)))
+
+    plt.errorbar( m_arr, ERTE_a, ERTE_std, fmt='o')
+    plt.savefig(f'./figures/{figname}.png')
+
+
 #makes the vectors needed for the renyi transfer entropy, given two time series and the memory m and l
 def make_selfconditional_vectors(xn, yn, m, l):
     N = len(xn)
@@ -219,34 +251,7 @@ def make_externalconditional_vectors(xn, sn, zn, tn, un, yn, m, l ):
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
 
-def test_ts(ts):
-    print(f'adf test:')
-    print(adfuller(ts))
 
-
-
-def writetofile_ERTE_m_depence(file,ts_t, ts_s,q, m_values, k=50):
-    with open(f'./data/apple_sp/ERTE_m_q={q}.csv', 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['m', 'mean ERTE', 'std ERTE'])
-        for m in m_values:
-            avg, std =  ERTE(ts_t, ts_s, q, m, l=1, k=k)
-            writer.writerow([m, avg, std])
-
-def plot_ERTE_m_depence(file, figname):
-    Lines = []
-    with open(file, 'r') as f:
-        cr = csv.reader(f)
-        for line in cr:
-            Lines.append(line)
-    lines = np.array(Lines)
-    m_arr = lines[1:, 0].astype(float)
-    ERTE_a = lines[1:, 1].astype(float)
-    ERTE_std = lines[1:, 2].astype(float)
-    plt.figure(figsize=((12, 7)))
-
-    plt.errorbar( m_arr, ERTE_a, ERTE_std, fmt='o')
-    plt.savefig(f'./figures/{figname}.png')
 
 #returns two lists: 1) stringnames of the stocks 2) according timeseries
 def get_timeseries(filename):
@@ -256,30 +261,126 @@ def get_timeseries(filename):
         timeseries.append(np.array(data[ts].tolist()))
     return (list(data.columns[1:]), timeseries)
 
+def get_RTEs_shuffeld(filename):
+    data = pd.read_csv(f'./data/{filename}.csv')
+    RTEs_shuffeld = []
+    for rte_q in list(data.columns):
+        RTEs_shuffeld.append(np.array(data[rte_q].tolist()))
+    return RTEs_shuffeld
 
 
+def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
+    with open(f'./data/{filename}_m{m}_l{l}_N{N}_.csv', 'w', newline='') as f:
+        yn_shuff = np.random.permutation(yn)
+        writer = csv.writer(f)
+        headers = [f'q={q}' for q in q_range]
+        writer.writerow(headers)
+        for k in range(5,51):
+            for i in range(N):
+                row = []
+                for q in q_range:
+                    if shuffel:
+                        row.append(RTE(xn, yn_shuff, q, m, l, k))
+                    else:
+                        row.append(RTE(xn, yn, q, m, l, k))
+                writer.writerow(row)
+
+#stocks_i = strings of stock names , timeseries_i = np_array of data of the timeseries,
+#ln_... are the logreturn timeseries
 stocks_z, timeseries_z = get_timeseries('zlata_timeseries')
 stocks_n, timeseries_n = get_timeseries('narayan_timeseries')
 ln_stocks_z, ln_timeseries_z = get_timeseries('logreturn_zlata_timeseries')
 ln_stocks_n, ln_timeseries_n = get_timeseries('logreturn_narayan_timeseries')
 
 
-for i,ts in enumerate(ln_timeseries_z):
-    print(ln_stocks_z[i])
-    test_ts(ts)
-    print('------------------------------------')
+ln_SP500 = ln_timeseries_z[0]
+ln_SP5 = ln_timeseries_n[5]
 
-SP5 = (4.949733721649842*7.109109)*timeseries_n[0]+(4.949733721649842*5.926995)*timeseries_n[3]+(4.949733721649842*3.121333)*timeseries_n[1]+(4.949733721649842*2.005476)*timeseries_n[2]+(4.949733721649842*2.040194)*timeseries_n[4]
 
+
+
+
+
+for i,ts in enumerate(ln_timeseries_n[:-1]):
+    print(ln_stocks_n[i])
+    start = time.process_time()
+    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5_juist', ln_SP5, ts , m=1, l=1, q_range=[0.8, 1, 1.4], N=1)
+    print(time.process_time() - start)
+
+
+
+
+#xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(ln_SP5 , ln_apple ,m=1,l=1 )
+#xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(ln_SP5 ,ln_amazon, ln_google, ln_microsoft, ln_tesla, ln_apple, m=1, l=1)
 
 """
-print(len(timeseries_n[0]), len(timeseries_z[1]))
+for stock in ln_stocks_n[:-1]:
+    data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_juist_m1_l1_N1_.csv')
+    data_shuff = pd.read_csv(f'./data/RTE_shuff_{stock}_SP5_historySP5_m1_l1_N1_.csv')
+
+    print('T', stock, '-> S&P5, (m,l) = (1,1)')
+    print('------------------------------------------------------------------------------------------------------')
+    for rte_q in list(data.columns):
+        print(rte_q)
+        rtes = np.array(data[rte_q].tolist())
+        rtes_shuff = np.array(data_shuff[rte_q].tolist())
+        mean = np.mean(rtes) - np.mean(rtes_shuff)
+        std = np.std(rtes) + np.std(rtes_shuff)
+        print(mean, std)
+    print('------------------------------------------------------------------------------------------------------')
+
+
+
+
+
+stock = ln_stocks_n[0]
+
+data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_juist_m1_l1_N1_.csv')
+data_shuff = pd.read_csv(f'./data/RTE_shuff_{stock}_SP5_historySP5_m1_l1_N1_.csv')
+data_shuff_juist = pd.read_csv(f'./data/RTE_shuff_{stock}_SP5_historySP5_juist_m1_l1_N1_.csv')
+print('T', stock, '-> S&P5, (m,l) = (1,1)')
+print('------------------------------------------------------------------------------------------------------')
+for rte_q in list(data.columns):
+    print(rte_q)
+    rtes = np.array(data[rte_q].tolist())
+    rtes_shuff = np.array(data_shuff[rte_q].tolist())
+    mean = np.mean(rtes) - np.mean(rtes_shuff)
+    std = np.std(rtes) + np.std(rtes_shuff)
+    print('fout:', mean, std)
+    rtes_shuff = np.array(data_shuff_juist[rte_q].tolist())
+    mean = np.mean(rtes) - np.mean(rtes_shuff)
+    std = np.std(rtes) + np.std(rtes_shuff)
+    print('juist', mean, std)
+print('------------------------------------------------------------------------------------------------------')
+
+
+
+SP500 = timeseries_z[0]
+SP5= timeseries_n[5]
+print(len(SP5))
+print(len(SP500))
+
 plt.figure(figsize=((12, 7)))
-plt.plot(range(len(timeseries_n[0])), timeseries_n[0],  color = 'red', label = stocks_n[0])
-plt.plot(range(len(timeseries_z[1])), timeseries_z[1],color  = 'blue' ,label = stocks_z[1])
+plt.plot(range(len(SP500)), 100*SP500/SP500[0],  color = 'red', label = 'Emprical S&P500')
+plt.plot(range(len(SP5)), 100*SP5/SP5[0] ,color  = 'blue' ,label = 'Constructed S&P5')
+plt.plot(range(len(timeseries_n[1])), 100*timeseries_n[1]/timeseries_n[1][0], color = 'green', label = 'Apple')
 plt.legend()
-plt.title('comparisson apple data narayan and zlata')
-plt.savefig(f'./figures/apple_comparison.png')
+plt.title('S&P500, S&P5 and Apple time series ')
+plt.xlabel('Time (minutes)')
+plt.ylabel('Normalised Index Value')
+
+plt.savefig(f'./figures/SP5_SP500_apple_comparison.png')
+
+
+
+print(len(ln_timeseries_n[0]), len(ln_timeseries_z[1]))
+plt.figure(figsize=((12, 7)))
+plt.plot(range(len(ln_timeseries_n[0])), ln_timeseries_n[0],  color = 'red', label = stocks_n[0])
+plt.plot(range(len(ln_timeseries_z[1])), ln_timeseries_z[1],color  = 'blue' ,label = stocks_z[1])
+plt.legend()
+plt.title('comparisson logreturn apple data narayan and zlata')
+plt.savefig(f'./figures/logreturn_apple_comparison.png')
+
 """
 
 

@@ -62,7 +62,7 @@ def make_externalconditional_vectors(xn, sn, zn, tn, un, yn, m, l ):
 
     return (xn1_xm_yl, xm_yl, xn1_xm, xm)
 
-xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(xn, an, bn, cn, dn, yn , m = 5, l=5)
+"""xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(xn, an, bn, cn, dn, yn , m = 5, l=5)
 print(xm)
 print(len(xm[0]))
 print(xn1_xm)
@@ -70,5 +70,13 @@ print(len(xn1_xm[0]))
 print(xm_yl)
 print(len(xm_yl[0]))
 print(xn1_xm_yl)
-print(len(xn1_xm_yl[0]))
+print(len(xn1_xm_yl[0]))"""
 
+
+
+# Driver code
+dict_1 = {'John': 15, 'Rick': 10, 'Misa': 12}
+dict_2 = {'Bonnie': 18, 'Rick': 20, 'Matt': 16}
+dict_1.update(dict_2)
+print('Updated dictionary:')
+print(dict_1)
