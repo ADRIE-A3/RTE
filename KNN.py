@@ -15,6 +15,10 @@ import calendar
 import re
 import time
 plt.rcParams.update({'font.size': 20})
+import math
+import numpy as np
+from timebudget import timebudget
+from multiprocessing import Pool
 
 
 
@@ -269,7 +273,7 @@ def get_RTEs_shuffeld(filename):
     return RTEs_shuffeld
 
 
-def write_RTE(filename,xn, yn ,m, l, q_range ,N=10, shuffel = False ):
+def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
 
     if shuffel:
         total_filename= f'./data/shuffeld_{filename}_m{m}_l{l}_N{N}_.csv'
@@ -280,7 +284,7 @@ def write_RTE(filename,xn, yn ,m, l, q_range ,N=10, shuffel = False ):
         writer = csv.writer(f)
         headers = [f'q={q}' for q in q_range]
         writer.writerow(headers)
-        for k in [5,15,25,35,45]:
+        for k in range(5,51):
             for i in range(N):
                 row = []
                 for q in q_range:
@@ -302,18 +306,58 @@ ln_stocks_n, ln_timeseries_n = get_timeseries('logreturn_narayan_timeseries')
 ln_SP500 = ln_timeseries_z[0]
 ln_SP5 = ln_timeseries_n[5]
 
+#shift timeseries
+ln_timeseries_n_shifted = [ts[1:] for ts in ln_timeseries_n[:-1]]
+ln_timeseries_n_shifted.append(ln_timeseries_n[-1][:-1])
 
 
 
 
+
+"""iterations_count = round(1e7)
+@timebudget
+def create_RTE_files(para):
+    shuffeled, ml = para[0], para[1]
+    [math.exp(i) * math.sinh(i) for i in [ml] * iterations_count]
+    for i,ts in enumerate(ln_timeseries_n[:-1]):
+        print(ln_stocks_n[i])
+        write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel= shuffeled)
+"""
+
+@timebudget
+def create_RTE_files(para):
+    i, j , shuffeld = para[0], para[1], para[2]
+    for ml in [1]:
+        print(ln_stocks_n[i], ln_stocks_n[j], ml, shuffeld)
+        write_RTE(f'RTE_{ln_stocks_n[i]}_{ln_stocks_n[j]}', ln_timeseries_n_shifted[j], ln_timeseries_n_shifted[i], m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel= shuffeld)
+        """print('now shuffeld')
+        write_RTE(f'RTE_{ln_stocks_n[i]}_{ln_stocks_n[j]}', ln_timeseries_n_shifted[j], ln_timeseries_n_shifted[i], m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel=True)
+
+"""
+#create_RTE_files(True, 1)
+
+@timebudget
+def run_multiple_RTEfiles(operation, input, pool):
+    pool.map(operation, input)
+
+
+processes_count = 10
+
+if __name__ == '__main__':
+    processes_pool = Pool(processes_count)
+    run_multiple_RTEfiles(create_RTE_files, [(0,5, True), (1,5, True), (2,5, True), (3,5, True), (4,5, True), (0,5, False), (1,5, False), (2,5, False), (3,5, False), (4,5, False) ], processes_pool)
+
+
+
+"""
 
 for i,ts in enumerate(ln_timeseries_n[:-1]):
     print(ln_stocks_n[i])
     start = time.process_time()
-    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=1, l=1, q_range=[0.8, 1, 1.4], N=10, shuffel= False)
+    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=1, l=1, q_range=[0.8, 1, 1.4], N=1, shuffel= False)
     print(time.process_time() - start)
 
-
+"""
 
 
 #xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(ln_SP5 , ln_apple ,m=1,l=1 )
@@ -321,8 +365,8 @@ for i,ts in enumerate(ln_timeseries_n[:-1]):
 
 """
 for stock in ln_stocks_n[:-1]:
-    data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_juist_m1_l1_N1_.csv')
-    data_shuff = pd.read_csv(f'./data/RTE_shuff_{stock}_SP5_historySP5_m1_l1_N1_.csv')
+    data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_m1_l1_N1_.csv')
+    data_shuff = pd.read_csv(f'./data/shuffeld_RTE_{stock}_SP5_historySP5_m1_l1_N10_.csv')
 
     print('T', stock, '-> S&P5, (m,l) = (1,1)')
     print('------------------------------------------------------------------------------------------------------')
@@ -334,7 +378,6 @@ for stock in ln_stocks_n[:-1]:
         std = np.std(rtes) + np.std(rtes_shuff)
         print(mean, std)
     print('------------------------------------------------------------------------------------------------------')
-
 
 """
 
@@ -361,7 +404,7 @@ print('-------------------------------------------------------------------------
 """
 
 
-SP500 = timeseries_z[0]
+"""SP500 = timeseries_z[0]
 SP5= timeseries_n[5]
 print(len(SP5))
 print(len(SP500))
@@ -377,7 +420,7 @@ plt.ylabel('Normalised Index Value')
 
 plt.savefig(f'./figures/SP5_SP500_apple_comparison.png')
 
-
+"""
 
 """print(len(ln_timeseries_n[0]), len(ln_timeseries_z[1]))
 plt.figure(figsize=((12, 7)))

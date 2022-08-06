@@ -135,7 +135,7 @@ def write_time_series_to_file(filename, headers,dicts):
 def SP5_constructor(dicts):
     SP5_dict = {}
     for key in sorted(dicts[0].keys()):
-        sp5 =  (4.949733721649842 * 7.109109) * dicts[0][key][0] + (4.949733721649842 * 5.926995) * dicts[3][key][0] + (4.949733721649842 * 3.121333) * dicts[1][key][0]  + (4.949733721649842 * 2.005476) * dicts[2][key][0]  + (  4.949733721649842 * 2.040194) * dicts[4][key][0]
+        sp5 =  (4.949733721649842 * 7.109109) * dicts[0][key][0] + (4.949733721649842 * 5.926995) * dicts[3][key][0] + (4.949733721649842 * 3.121333) * dicts[1][key][0] + (4.949733721649842 * 2.005476) * dicts[2][key][0]  + (4.949733721649842 * 2.040194) * dicts[4][key][0]
         SP5_dict[key] = [sp5/100]
         ln_SP5_dict = prices_to_lnreturns(SP5_dict)
     return (SP5_dict, ln_SP5_dict)
@@ -160,17 +160,17 @@ write_time_series_to_file('logreturn_zlata_timeseries', names , lnreturns_dicts)
 
 
 #read Narayan data
-AAPL2_dict,  AAPl2_ln_dict = read_narayan_data('AAPL2 raw')
-AMZN2_dict,  AMZN2_ln_dict = read_narayan_data('AMZN2 raw')
-GOOGL2_dict,  GOOGL2_ln_dict = read_narayan_data('GOOGL2 raw')
-MSFT2_dict,  MSFT2_ln_dict = read_narayan_data('MSFT2 raw')
-TSLA2_dict,  TSLA2_ln_dict = read_narayan_data('TSLA2 raw')
+AAPL2_dict,  AAPl2_ln_dict = read_narayan_data('AAPL2 adjusted')
+AMZN2_dict,  AMZN2_ln_dict = read_narayan_data('AMZN2 adjusted')
+GOOGL2_dict,  GOOGL2_ln_dict = read_narayan_data('GOOGL2 adjusted')
+MSFT2_dict,  MSFT2_ln_dict = read_narayan_data('MSFT2 adjusted')
+TSLA2_dict,  TSLA2_ln_dict = read_narayan_data('TSLA2 adjusted')
 
-AAPL1_dict,  AAPl1_ln_dict = read_narayan_data('AAPL1 raw')
-AMZN1_dict,  AMZN1_ln_dict = read_narayan_data('AMZN1 raw')
-GOOGL1_dict,  GOOGL1_ln_dict = read_narayan_data('GOOGL1 raw')
-MSFT1_dict,  MSFT1_ln_dict = read_narayan_data('MSFT1 raw')
-TSLA1_dict,  TSLA1_ln_dict = read_narayan_data('TSLA1 raw')
+AAPL1_dict,  AAPl1_ln_dict = read_narayan_data('AAPL1 adjusted')
+AMZN1_dict,  AMZN1_ln_dict = read_narayan_data('AMZN1 adjusted')
+GOOGL1_dict,  GOOGL1_ln_dict = read_narayan_data('GOOGL1 adjusted')
+MSFT1_dict,  MSFT1_ln_dict = read_narayan_data('MSFT1 adjusted')
+TSLA1_dict,  TSLA1_ln_dict = read_narayan_data('TSLA1 adjusted')
 
 
 
@@ -189,7 +189,7 @@ for i, dict in enumerate(nlnreturns_dicts1):
 SP5_dict, SP5_ln_dict = SP5_constructor(nprices_dicts1)
 nprices_dicts1.append(SP5_dict)
 nlnreturns_dicts1.append(SP5_ln_dict)
-stocks = ['datetime', 'AAPL2 raw','AMZN2 raw','GOOGL2 raw','MSFT2 raw','TSLA2 raw', 'SP5 raw']
+stocks = ['datetime', 'AAPL2 adjusted','AMZN2 adjusted','GOOGL2 adjusted','MSFT2 adjusted','TSLA2 adjusted', 'SP5 adjusted']
 
 
 
