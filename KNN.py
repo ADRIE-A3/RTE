@@ -1,4 +1,4 @@
-import numpy as np
+
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
 from scipy.special import gamma, digamma
@@ -14,13 +14,15 @@ from datetime import date
 import calendar
 import re
 import time
-plt.rcParams.update({'font.size': 20})
+plt.rcParams.update({'font.size': 15})
+
 import math
 import numpy as np
 from timebudget import timebudget
 from multiprocessing import Pool
 
-
+import seaborn as sns; sns.set_theme()
+sns.set(font_scale = 2)
 
 # analytical value for normal distribution at given q, dimension and correlation matrix determinant (default = 1)
 def RE_normal(q, dim, det_sigm=1):
@@ -149,6 +151,16 @@ def RTE(xn, yn,q , m=1 ,l=1 , k=50):
     term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) - Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
     #print(term1, term2)
     return term1-term2
+
+
+def RTE_ext(xn, yn ,an, bn , cn, dn, q, m=1, l=1, k= 50):
+    xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(xn, an, bn, cn, dn, yn, m, l )
+    term1 = Renyi_Estimator(k, len(xn1_xm[0]), q, xn1_xm) - Renyi_Estimator(k, len(xm[0]), q, xm)
+    term2 = Renyi_Estimator(k, len(xn1_xm_yl[0]),q, xn1_xm_yl ) - Renyi_Estimator(k, len(xm_yl[0]),q, xm_yl )
+    #print(term1, term2)
+    return term1-term2
+
+
 
 # this fucntion calculates the ERTE by subtracting the RTE with the RTE_shuffeled ,
 # where the in the RTE_shuffeled the source series is shuffeld
@@ -295,6 +307,33 @@ def write_RTE(filename,xn, yn ,m, l, q_range ,N=1, shuffel = False ):
                         row.append(RTE(xn, yn, q, m, l, k))
                 writer.writerow(row)
 
+
+def write_RTE_conditioning_companies(filename,xn, yn ,m, l, q_range , othertimeseries ,N=1,shuffel= False):
+    an, bn, cn, dn = othertimeseries[0], othertimeseries[1], othertimeseries[2], othertimeseries[3]
+    if shuffel:
+        total_filename = f'./data/shuffeld_{filename}_m{m}_l{l}_N{N}.csv'
+    else:
+        total_filename = f'./data/{filename}_m{m}_l{l}_N{N}.csv'
+
+    with open(total_filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        headers = [f'q={q}' for q in q_range]
+        writer.writerow(headers)
+        for k in range(5,51):
+            for i in range(N):
+                row = []
+                for q in q_range:
+                    if shuffel:
+                        yn_shuff = np.random.permutation(yn)
+                        row.append(RTE(xn, yn_shuff, q, m, l, k))
+
+                    else:
+                        row.append(RTE(xn, yn, q, m, l, k))
+
+                writer.writerow(row)
+
+
+
 #stocks_i = strings of stock names , timeseries_i = np_array of data of the timeseries,
 #ln_... are the logreturn timeseries
 stocks_z, timeseries_z = get_timeseries('zlata_timeseries')
@@ -306,34 +345,29 @@ ln_stocks_n, ln_timeseries_n = get_timeseries('logreturn_narayan_timeseries')
 ln_SP500 = ln_timeseries_z[0]
 ln_SP5 = ln_timeseries_n[5]
 
-#shift timeseries
+#shift timeseries narayan
 ln_timeseries_n_shifted = [ts[1:] for ts in ln_timeseries_n[:-1]]
 ln_timeseries_n_shifted.append(ln_timeseries_n[-1][:-1])
 
+#shift timeseries zlata
+ln_timeseries_z_shifted = [ln_timeseries_n[0][:-1]]
+for ts in ln_timeseries_n[1:]:
+    ln_timeseries_z_shifted.append(ts[1:])
 
-
-
-
-"""iterations_count = round(1e7)
-@timebudget
-def create_RTE_files(para):
-    shuffeled, ml = para[0], para[1]
-    [math.exp(i) * math.sinh(i) for i in [ml] * iterations_count]
-    for i,ts in enumerate(ln_timeseries_n[:-1]):
-        print(ln_stocks_n[i])
-        write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel= shuffeled)
-"""
 
 @timebudget
 def create_RTE_files(para):
-    i, j , shuffeld = para[0], para[1], para[2]
-    for ml in [1]:
-        print(ln_stocks_n[i], ln_stocks_n[j], ml, shuffeld)
-        write_RTE(f'RTE_{ln_stocks_n[i]}_{ln_stocks_n[j]}', ln_timeseries_n_shifted[j], ln_timeseries_n_shifted[i], m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel= shuffeld)
-        """print('now shuffeld')
-        write_RTE(f'RTE_{ln_stocks_n[i]}_{ln_stocks_n[j]}', ln_timeseries_n_shifted[j], ln_timeseries_n_shifted[i], m=ml, l=ml, q_range=[0.8, 1, 1.4], N=1, shuffel=True)
+    i, j , shuffeld, m, l  = para[0], para[1], para[2], para[3], para[4]
+    print('source series:',ln_stocks_z[i],'target series:', ln_stocks_z[j], 'm=l=', m, l, 'shuffeld:' ,shuffeld)
+    """
+    othertimeseries = []
+    for p in range(5):
+        if p !=i:
+            othertimeseries.append(ln_timeseries_n_shifted[p])
+            #print(ln_stocks_n[p])
+    """
+    write_RTE(f'RTE_{ln_stocks_z[i]}_{ln_stocks_z[j]}', ln_timeseries_z_shifted[j], ln_timeseries_z_shifted[i], m=m, l=l, q_range=[0.8, 1, 1.4], N=1, shuffel= shuffeld)
 
-"""
 #create_RTE_files(True, 1)
 
 @timebudget
@@ -341,34 +375,124 @@ def run_multiple_RTEfiles(operation, input, pool):
     pool.map(operation, input)
 
 
-processes_count = 10
 
-if __name__ == '__main__':
+processes_count = 8
+
+"""if __name__ == '__main__':
     processes_pool = Pool(processes_count)
-    run_multiple_RTEfiles(create_RTE_files, [(0,5, True), (1,5, True), (2,5, True), (3,5, True), (4,5, True), (0,5, False), (1,5, False), (2,5, False), (3,5, False), (4,5, False) ], processes_pool)
-
-
+    run_multiple_RTEfiles(create_RTE_files, [(0, 1 , True, 1,1) ,(0, 2 , True, 1,1), (1, 0 , True, 1,1),( 2 ,0 , True , 1,1), (0, 1 , False, 1,1) ,(0, 2 , False, 1,1), (1, 0 , False, 1,1),( 2 ,0 , False , 1,1) ] ,processes_pool)
 
 """
 
-for i,ts in enumerate(ln_timeseries_n[:-1]):
-    print(ln_stocks_n[i])
-    start = time.process_time()
-    write_RTE(f'RTE_{ln_stocks_n[i]}_SP5_historySP5', ln_SP5[:-1], ts[1:] , m=1, l=1, q_range=[0.8, 1, 1.4], N=1, shuffel= False)
-    print(time.process_time() - start)
+def heatmap(filename, external = False, meanorder = True) :
+    coeff = 4.949733721649842* np.array([ 7.109109,3.121333, 2.005476, 5.926995, 2.040194])/100
+    df_stock_sp5 = pd.DataFrame()
+    df_stock_sp5_err = pd.DataFrame()
+    product_dict = {}
+
+    parameters = []
+    for i,stock in enumerate(ln_stocks_n[:-1]):
+        print(i, stock)
+        ERTEs = []
+        ERTEs_err = []
+
+        if meanorder:
+            product_dict[stock] = np.mean(timeseries_n[i]) * coeff[i]
+        else:
+            product_dict[stock] = coeff[i]*np.std(timeseries_n[i])
+
+        for ml in [(1,1), (5,1), (5,5)]:
+            m, l= ml[0], ml[1]
+
+            if external:
+                data = pd.read_csv(f'./data/ERTEs_stock_SP5_externalconditional_m{m}l{l}/RTE_{stock}_SP5 adjusted_m{m}_l{l}_N1_externalconditional.csv')
+                data_shuff = pd.read_csv(f'./data/ERTEs_stock_SP5_externalconditional_m{m}l{l}/shuffeld_RTE_{stock}_SP5 adjusted_m{m}_l{l}_N1_externalconditional.csv')
+            else:
+                data = pd.read_csv(f'./data/ERTEs_SP5_stock_m{m}l{l}/RTE_SP5 adjusted_{stock}_m{m}_l{l}_N1_.csv')
+                data_shuff = pd.read_csv(f'./data/ERTEs_SP5_stock_m{m}l{l}/shuffeld_RTE_SP5 adjusted_{stock}_m{m}_l{l}_N1_.csv')
+
+
+           
+  
+
+            for rte_q in list(data.columns):
+                rtes = np.array(data[rte_q].tolist())
+                rtes_shuff = np.array(data_shuff[rte_q].tolist())
+                mean = np.mean(rtes) - np.mean(rtes_shuff)
+                std = np.std(rtes) + np.std(rtes_shuff)
+                ERTEs.append(mean)
+                ERTEs_err.append(std)
+
+
+                if i==0:
+                    parameters.append(f'S&P5->Comp ({m},{l}) {rte_q}')
+                    #parameters.append(f'({m},{l}) {rte_q}')
+            """
+            
+            data = pd.read_csv(f'./data/ERTEs_stock_SP5_m{m}l{l}/RTE_{stock}_SP5 adjusted_m{m}_l{l}_N1_.csv')
+            data_shuff = pd.read_csv(f'./data/ERTEs_stock_SP5_m{m}l{l}/shuffeld_RTE_{stock}_SP5 adjusted_m{m}_l{l}_N1_.csv')
+
+            for rte_q in list(data.columns):
+                rtes = np.array(data[rte_q].tolist())
+                rtes_shuff = np.array(data_shuff[rte_q].tolist())
+                mean = np.mean(rtes) - np.mean(rtes_shuff)
+                std = np.std(rtes) + np.std(rtes_shuff)
+                ERTEs.append(mean)
+                ERTEs_err.append(std)
+                if i == 0:
+                    parameters.append(f'Comp->S&P5 ({m},{l}) {rte_q}')
+                    # parameters.append(f'm={m} l={l} {rte_q}')
+            """
+        df_stock_sp5[stock] = ERTEs
+        df_stock_sp5_err[stock] = ERTEs_err
+
+
+    df_stock_sp5['parameters (m,l)'] = parameters
+    df_stock_sp5.set_index("parameters (m,l)", inplace = True)
+    new_row = pd.Series(data=product_dict, name='coeff.meanprize')
+    df_stock_sp5 = df_stock_sp5.append(new_row, ignore_index=False)
+    df_stock_sp5 = df_stock_sp5.sort_values(by ='coeff.meanprize', axis=1)
+
+    print(df_stock_sp5)
+
+
+    # Draw a heatmap with the numeric values in each cell
+    f, ax = plt.subplots(figsize=(20, 13))
+    sns.heatmap(df_stock_sp5.iloc[:-1], annot=True, linewidths=.5, ax=ax)
+    if external:
+        plt.title(f'ERTE with external conditioning')
+
+    else:
+        plt.title(f'ERTE (m,l)=({m},{l}) with self conditioning')
+    plt.tight_layout()
+    plt.savefig(filename)
+
+heatmap('./figures/ERTE_ext_cond_stdorder', external= True, meanorder=False )
+
+"""for stock in ln_stocks_n[:-1]:
+    data = pd.read_csv(f'./data/RTE_SP5 adjusted_{stock}_m5_l1_N1_.csv')
+    data_shuff = pd.read_csv(f'./data/shuffeld_RTE_SP5 adjusted_{stock}_m5_l1_N1_.csv') 
+
+    print('T -> SP5 --> ', stock, ', (m,l) = (5,1) : selfconditional')
+    print('------------------------------------------------------------------------------------------------------')
+    for rte_q in list(data.columns):
+        print(rte_q)
+        rtes = np.array(data[rte_q].tolist())
+        rtes_shuff = np.array(data_shuff[rte_q].tolist())
+        mean = np.mean(rtes) - np.mean(rtes_shuff)
+        std = np.std(rtes) + np.std(rtes_shuff)
+        print(mean, std)
+    print('------------------------------------------------------------------------------------------------------')
+"""
 
 """
 
-
-#xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(ln_SP5 , ln_apple ,m=1,l=1 )
-#xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(ln_SP5 ,ln_amazon, ln_google, ln_microsoft, ln_tesla, ln_apple, m=1, l=1)
-
-"""
 for stock in ln_stocks_n[:-1]:
-    data = pd.read_csv(f'./data/RTE_{stock}_SP5_historySP5_m1_l1_N1_.csv')
-    data_shuff = pd.read_csv(f'./data/shuffeld_RTE_{stock}_SP5_historySP5_m1_l1_N10_.csv')
+    data = pd.read_csv(f'./data/RTE_SP5 adjusted_{stock}_m5_l1_N1_.csv')
 
-    print('T', stock, '-> S&P5, (m,l) = (1,1)')
+    data_shuff = pd.read_csv(f'./data/shuffeld_RTE_SP5 adjusted_{stock}_m5_l1_N1_.csv')
+
+    print('T -> SP5 --> ', stock, ', (m,l) = (5,1) : selfconditional')
     print('------------------------------------------------------------------------------------------------------')
     for rte_q in list(data.columns):
         print(rte_q)
@@ -380,7 +504,6 @@ for stock in ln_stocks_n[:-1]:
     print('------------------------------------------------------------------------------------------------------')
 
 """
-
 
 """stock = ln_stocks_n[0]
 

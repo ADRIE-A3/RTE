@@ -94,7 +94,7 @@ print(xn1_xm_yl)
 print(len(xn1_xm_yl[0]))"""
 
 
-xn1_xm_yl, xm_yl, xn1_xm, xm = make_selfconditional_vectors(xn, yn , m = 2, l=1)
+xn1_xm_yl, xm_yl, xn1_xm, xm = make_externalconditional_vectors(xn,an, bn, cn, dn, yn , m = 1, l=1)
 print(xm)
 print(len(xm[0]))
 print(xn1_xm)
@@ -103,3 +103,6 @@ print(xm_yl)
 print(len(xm_yl[0]))
 print(xn1_xm_yl)
 print(len(xn1_xm_yl[0]))
+
+
+print (1/4.949733721649842)
